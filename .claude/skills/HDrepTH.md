@@ -514,6 +514,239 @@ Gates ที่เกี่ยวข้อง: [รายชื่อ]
 
 ---
 
+---
+
+## ขั้นตอนสุดท้าย — สร้างไฟล์ .docx เมื่อผู้ใช้แจ้ง "รูปสุดท้าย"
+
+### การตรวจจับสัญญาณ "รูปสุดท้าย"
+
+เมื่อผู้ใช้ส่งข้อความหรือรูปพร้อมกับคำใดคำหนึ่งต่อไปนี้ (ภาษาไทยหรืออังกฤษ):
+- "รูปสุดท้าย", "รูปสุดท้ายแล้ว", "แค่นี้เลย", "ครบแล้ว", "หมดแล้ว"
+- "last photo", "last chart", "that's all", "done", "finished"
+- หรือสัญญาณอื่น ๆ ที่แสดงว่าผู้ใช้ส่งรูปครบทุกรูปแล้ว
+
+ให้ทำตามลำดับนี้:
+1. วิเคราะห์รูปสุดท้ายให้เสร็จก่อน (ถ้ามีรูปมาด้วย)
+2. รวบรวมข้อมูลทั้งหมดจากทุกรูปที่วิเคราะห์ในเซสชันนี้
+3. สร้างรายงานฉบับสมบูรณ์ตามโครงสร้าง 13 บท
+4. สร้างไฟล์ .docx ตามขั้นตอนด้านล่าง
+
+---
+
+### วิธีสร้างไฟล์ .docx
+
+ใช้ Bash tool รันสคริปต์ Python ต่อไปนี้ โดยแทนที่ `REPORT_CONTENT` ด้วยเนื้อหารายงานฉบับเต็ม:
+
+```python
+import subprocess
+import sys
+
+# ติดตั้ง python-docx ถ้ายังไม่มี
+subprocess.run([sys.executable, "-m", "pip", "install", "python-docx", "-q"], check=True)
+
+from docx import Document
+from docx.shared import Pt, Cm, RGBColor, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.style import WD_STYLE_TYPE
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
+import datetime
+import os
+
+doc = Document()
+
+# ตั้งค่าหน้ากระดาษ A4
+section = doc.sections[0]
+section.page_width = Cm(21)
+section.page_height = Cm(29.7)
+section.left_margin = Cm(2.5)
+section.right_margin = Cm(2.5)
+section.top_margin = Cm(2.5)
+section.bottom_margin = Cm(2.5)
+
+# ฟังก์ชันตั้งค่าฟอนต์ภาษาไทย
+def set_thai_font(run, size=12, bold=False, color=None):
+    run.font.name = 'TH Sarabun New'
+    run.font.size = Pt(size)
+    run.font.bold = bold
+    if color:
+        run.font.color.rgb = RGBColor(*color)
+    r = run._r
+    rPr = r.get_or_add_rPr()
+    rFonts = OxmlElement('w:rFonts')
+    rFonts.set(qn('w:ascii'), 'TH Sarabun New')
+    rFonts.set(qn('w:hAnsi'), 'TH Sarabun New')
+    rFonts.set(qn('w:cs'), 'TH Sarabun New')
+    rPr.insert(0, rFonts)
+
+def add_heading(doc, text, level=1):
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    run = p.add_run(text)
+    sizes = {1: 20, 2: 16, 3: 14, 4: 13}
+    colors = {1: (31, 73, 125), 2: (54, 95, 145), 3: (79, 129, 189), 4: (0, 0, 0)}
+    set_thai_font(run, size=sizes.get(level, 13), bold=True, color=colors.get(level))
+    p.paragraph_format.space_before = Pt(12 if level == 1 else 8)
+    p.paragraph_format.space_after = Pt(6)
+    return p
+
+def add_body(doc, text, indent=False):
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    run = p.add_run(text)
+    set_thai_font(run, size=13)
+    p.paragraph_format.space_after = Pt(4)
+    if indent:
+        p.paragraph_format.left_indent = Cm(1)
+    return p
+
+def add_bullet(doc, text, level=0):
+    p = doc.add_paragraph(style='List Bullet')
+    run = p.add_run(text)
+    set_thai_font(run, size=13)
+    p.paragraph_format.left_indent = Cm(1 + level * 0.5)
+    p.paragraph_format.space_after = Pt(3)
+    return p
+
+def add_table(doc, headers, rows):
+    table = doc.add_table(rows=1 + len(rows), cols=len(headers))
+    table.style = 'Table Grid'
+    # Header row
+    hdr_cells = table.rows[0].cells
+    for i, h in enumerate(headers):
+        hdr_cells[i].text = h
+        run = hdr_cells[i].paragraphs[0].runs[0]
+        set_thai_font(run, size=12, bold=True)
+        hdr_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        # Header background color
+        tc = hdr_cells[i]._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:fill'), '1F497D')
+        shd.set(qn('w:color'), 'FFFFFF')
+        shd.set(qn('w:val'), 'clear')
+        tcPr.append(shd)
+        run.font.color.rgb = RGBColor(255, 255, 255)
+    # Data rows
+    for r_idx, row_data in enumerate(rows):
+        row_cells = table.rows[r_idx + 1].cells
+        for c_idx, cell_text in enumerate(row_data):
+            row_cells[c_idx].text = str(cell_text)
+            run = row_cells[c_idx].paragraphs[0].runs[0] if row_cells[c_idx].paragraphs[0].runs else row_cells[c_idx].paragraphs[0].add_run(str(cell_text))
+            set_thai_font(run, size=12)
+    doc.add_paragraph()
+    return table
+
+def add_page_break(doc):
+    doc.add_page_break()
+
+def add_divider(doc):
+    p = doc.add_paragraph()
+    pPr = p._p.get_or_add_pPr()
+    pBdr = OxmlElement('w:pBdr')
+    bottom = OxmlElement('w:bottom')
+    bottom.set(qn('w:val'), 'single')
+    bottom.set(qn('w:sz'), '6')
+    bottom.set(qn('w:space'), '1')
+    bottom.set(qn('w:color'), '4472C4')
+    pBdr.append(bottom)
+    pPr.append(pBdr)
+    return p
+
+# =========================================================
+# เนื้อหารายงาน — แทนที่ด้วยเนื้อหาจริงจากการวิเคราะห์
+# โครงสร้างด้านล่างเป็นตัวอย่าง สร้างจากข้อมูลที่วิเคราะห์ได้
+# =========================================================
+
+# หน้าปก
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+run = p.add_run('Human Design Chart')
+set_thai_font(run, size=28, bold=True, color=(31, 73, 125))
+doc.add_paragraph()
+
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+run = p.add_run('การแปลผลฉบับสมบูรณ์')
+set_thai_font(run, size=22, bold=True, color=(54, 95, 145))
+doc.add_paragraph()
+
+# ใส่ชื่อ/วันเกิด (แทนที่ด้วยข้อมูลจริง)
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+run = p.add_run('[ชื่อ]  •  [วันเกิด]')
+set_thai_font(run, size=16)
+doc.add_paragraph()
+
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+run = p.add_run('โครงสร้างหลัก • Variables • Shadow Chart • Quantum Data')
+set_thai_font(run, size=14, color=(128, 128, 128))
+doc.add_paragraph()
+
+p = doc.add_paragraph()
+p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+run = p.add_run(f'วันที่จัดทำ: {datetime.date.today().strftime("%d %B %Y")}')
+set_thai_font(run, size=13)
+
+add_page_break(doc)
+
+# =========================================================
+# วิธีใช้สคริปต์นี้:
+# แทนที่ส่วน "เนื้อหารายงาน" ด้านบนด้วยการเรียก add_heading(),
+# add_body(), add_bullet(), add_table() ตามเนื้อหาจริง
+# ที่วิเคราะห์ได้จากรูป Chart
+# =========================================================
+
+# บันทึกไฟล์
+name_part = '[ชื่อ]'.replace(' ', '_')
+date_part = datetime.date.today().strftime('%Y%m%d')
+filename = f'/tmp/HumanDesign_{name_part}_{date_part}.docx'
+doc.save(filename)
+print(f'SAVED:{filename}')
+```
+
+**หลังรันสคริปต์:**
+1. อ่าน path ที่ print ออกมา (บรรทัดที่ขึ้นต้นด้วย `SAVED:`)
+2. ใช้ `SendUserFile` tool ส่งไฟล์ .docx ให้ผู้ใช้ทันที
+3. แจ้งผู้ใช้ว่า: "รายงานฉบับสมบูรณ์พร้อมแล้ว ดาวน์โหลดไฟล์ .docx ด้านบนได้เลย"
+
+---
+
+### วิธีสร้างเนื้อหาในไฟล์ .docx
+
+**แปลง Markdown เป็น python-docx calls:**
+
+| Markdown | python-docx function |
+|---|---|
+| `# หัวข้อใหญ่` | `add_heading(doc, "...", level=1)` |
+| `## หัวข้อรอง` | `add_heading(doc, "...", level=2)` |
+| `### หัวข้อย่อย` | `add_heading(doc, "...", level=3)` |
+| ย่อหน้าปกติ | `add_body(doc, "...")` |
+| `- bullet point` | `add_bullet(doc, "...")` |
+| ตาราง | `add_table(doc, ["คอลัมน์1", "คอลัมน์2"], [["ค่า1", "ค่า2"]])` |
+| เส้นคั่น `---` | `add_divider(doc)` |
+| ขึ้นหน้าใหม่ | `add_page_break(doc)` |
+
+**กฎการขึ้นหน้าใหม่:**
+- ขึ้นหน้าใหม่ก่อนทุกบท (บทที่ 1–13 และบทสรุป)
+- ไม่ขึ้นหน้าใหม่ระหว่างหัวข้อย่อยในบทเดียวกัน
+
+---
+
+### สรุปขั้นตอนทั้งหมดเมื่อได้รับ "รูปสุดท้าย"
+
+```
+1. วิเคราะห์รูปสุดท้าย (ถ้ามีรูปมาด้วย)
+2. รวบรวมข้อมูลจากทุกรูปในเซสชัน
+3. เขียนรายงานฉบับสมบูรณ์ (13 บท) ในแชทก่อน
+4. สร้างสคริปต์ Python ที่ใส่เนื้อหาจริงทั้งหมดลงใน .docx
+5. รันสคริปต์ด้วย Bash tool
+6. ส่งไฟล์ .docx ให้ผู้ใช้ด้วย SendUserFile tool
+```
+
+---
+
 ## แนวทางการเขียน
 
 - **ภาษา**: ไทยทั้งหมด ยกเว้นคำศัพท์ Human Design ที่นิยมใช้ทับศัพท์ (Gate, Channel, Center, Defined ฯลฯ)
@@ -532,3 +765,5 @@ Gates ที่เกี่ยวข้อง: [รายชื่อ]
 - "วิเคราะห์ Human Design ให้หน่อย" + รูป
 - "สร้างรายงาน HD ภาษาไทยแบบละเอียด" + รูป
 - "อ่าน Chart นี้ให้ครบ ๆ" + รูป
+- "รูปสุดท้ายแล้ว" + รูป → วิเคราะห์ + สร้าง .docx อัตโนมัติ
+- "last photo" + รูป → วิเคราะห์ + สร้าง .docx อัตโนมัติ
