@@ -1,4 +1,13 @@
-# HDrepTH — Human Design Thai Report (ฉบับสมบูรณ์)
+---
+name: HDrepTH
+description: >
+  Human Design Thai Report — วิเคราะห์รูป Body Graph แล้วสร้างรายงาน Human Design
+  ภาษาไทยฉบับสมบูรณ์ 30–35 หน้า พร้อม 13 บท (Type/Strategy, Authority, Profile,
+  Definition, Centers, Channels, Incarnation Cross, Variables, Shadow Chart, Quantum
+  Data, Story Line, Exalted/Detriment, Special Gates) และสร้างไฟล์ .docx
+  ให้ดาวน์โหลด เรียกใช้เมื่อผู้ใช้ส่งรูป Human Design Chart หรือพิมพ์ /HDrepTH
+---
+
 
 ## เมื่อไหร่ให้ใช้ Skill นี้
 เมื่อผู้ใช้ส่งรูปภาพ Human Design Chart พร้อมคำขอให้วิเคราะห์หรือสร้างรายงาน Human Design ภาษาไทย
