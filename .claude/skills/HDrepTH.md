@@ -253,9 +253,49 @@
 ให้ทำตามลำดับ:
 1. วิเคราะห์รูปสุดท้าย (ถ้ามีรูปมาด้วย) — ผ่านขั้นตอนที่ 0 และ 1
 2. ผ่านการตรวจสอบคุณภาพ
-3. สร้างไฟล์ .txt ตามรูปแบบที่กำหนด
-4. รัน converter script
-5. ส่งไฟล์ให้ผู้ใช้
+3. ค้นหาไฟล์รูปในเซสชัน (ขั้นตอน 2a) ด้วย Bash tool
+4. สร้างไฟล์ .txt ตามรูปแบบที่กำหนด — ใส่ [IMAGE] tags ตามผลจากขั้นตอน 2a
+5. รัน converter script
+6. ส่งไฟล์ให้ผู้ใช้
+
+---
+
+### ขั้นตอน 2a — ค้นหาไฟล์รูปที่อัปโหลดในเซสชัน
+
+รูปภาพที่ผู้ใช้อัปโหลดเป็น **ไฟล์แนบ** (file attachment) ในเซสชัน Claude Code จะถูกบันทึกอัตโนมัติที่:
+```
+/root/.claude/uploads/[session-id]/[hash-filename]
+```
+
+**วิธีค้นหาไฟล์รูปจากเซสชัน:**
+
+ใช้ Bash tool รัน:
+```bash
+find /root/.claude/uploads -type f \( -name "*.jpg" -o -name "*.jpeg" -o -name "*.png" \) 2>/dev/null
+```
+
+ผลลัพธ์จะแสดง path ของรูปทั้งหมดที่อัปโหลดในเซสชันนี้ เช่น:
+```
+/root/.claude/uploads/934ea302-c137-5312-9f05-685c641b4d6c/abc123-bodygraph.jpg
+/root/.claude/uploads/934ea302-c137-5312-9f05-685c641b4d6c/def456-variables.png
+```
+
+**ถ้าไม่พบไฟล์รูป** (รูปถูกส่งแบบ inline paste ไม่ใช่ file attachment): ข้ามแท็ก `[IMAGE]` ไป — สคริปต์จะแสดง placeholder แทนการ crash
+
+**การจับคู่รูปกับส่วนของรายงาน:**
+
+| ประเภทรูป | แท็ก IMAGE ใส่ที่บท |
+|---|---|
+| Body Graph หลัก (โครงสร้าง Centers, Channels) | ก่อน [H1] บทที่ 5 (Centers) |
+| Variables / 4 Arrows | ก่อน [H2] แรกของบทที่ 8 |
+| Shadow Chart / Not-Self | ก่อน [H2] แรกของบทที่ 9 |
+| Quantum Data (ตัวเลข Lines/Circuits/Quarters) | ก่อน [H2] แรกของบทที่ 10 |
+| Story Line / Nodes | ก่อน [H2] แรกของบทที่ 11 |
+| Exalted / Detriment | ก่อน [H2] แรกของบทที่ 12 |
+
+ถ้าไม่แน่ใจว่ารูปไหนคืออะไร ให้ใส่ Body Graph ไว้ที่บทที่ 5 และรูปที่เหลือตามลำดับที่ได้รับ
+
+**ถ้ารูปเดียวกันเกี่ยวข้องกับหลายบท** ใส่แท็ก `[IMAGE]` ซ้ำได้เลย — สคริปต์ embed รูปซ้ำแค่ครั้งเดียว (deduplication อัตโนมัติ)
 
 ---
 
@@ -279,6 +319,9 @@
 [TABLE_ROW] ค่า 1 | ค่า 2 | ค่า 3
 [TABLE_ROW] ค่า 4 | ค่า 5 | ค่า 6
 
+[IMAGE] /root/.claude/uploads/[session-id]/[filename]
+[IMAGE_CAPTION] คำอธิบายรูป เช่น Body Graph — [ชื่อผู้รับการวิเคราะห์]
+
 [PAGEBREAK]
 [H1] บทที่ 2: ...
 ```
@@ -293,6 +336,8 @@
 - `[SUBBULLET]` = รายการ ◦ ย่อย
 - `[TABLE_HEADER]` = แถวหัวตาราง (คอลัมน์คั่นด้วย `|`)
 - `[TABLE_ROW]` = แถวข้อมูลตาราง (คอลัมน์คั่นด้วย `|`)
+- `[IMAGE]` = รูปภาพ (ระบุ absolute path)
+- `[IMAGE_CAPTION]` = คำอธิบายรูป (ใส่ต่อจาก `[IMAGE]` ทันที)
 - `[PAGEBREAK]` = ขึ้นหน้าใหม่
 - บรรทัดว่าง = เว้นบรรทัด
 
@@ -307,6 +352,13 @@
 [TABLE_ROW] Type | Pure Manifesting Generator
 [TABLE_ROW] Strategy | Respond
 [TABLE_ROW] Authority | Sacral
+
+[PAGEBREAK]
+[H1] บทที่ 5: Centers — ศูนย์พลัง 9 แห่ง
+[INTRO] Centers คือ...
+[IMAGE] /root/.claude/uploads/934ea302-c137/abc123-bodygraph.jpg
+[IMAGE_CAPTION] Body Graph — JJ Z (22 กุมภาพันธ์ 1991)
+[H2] Centers ที่ Defined...
 
 [PAGEBREAK]
 [H1] บทที่ 1: Type และกลยุทธ์ชีวิต
@@ -352,7 +404,7 @@ SAVED:/tmp/HD_Report.docx (45 KB)
 - **โทน**: อบอุ่น ตรงไปตรงมา ไม่ตัดสิน ไม่พยากรณ์ชะตา
 - **ตัวอย่าง**: ทุกส่วนต้องมีตัวอย่างชีวิตจริง ไม่ใช่แค่คำนิยาม
 - **ความลึก**: เทียบเท่า 30–35 หน้า A4 — เขียนให้ครบ ไม่ย่อ ไม่ซ้ำซ้อน
-- **รูปภาพ**: แสดงรูป Chart ต้นฉบับที่ส่งมาไว้ที่ต้นรายงาน
+- **รูปภาพ**: ฝังรูป Chart ต้นฉบับในบทที่เกี่ยวข้อง (ต้องค้นหา path จาก uploads ก่อน — ดูขั้นตอน 2a)
 - **ความซื่อสัตย์**: ถ้าอ่านข้อมูลจากรูปไม่ได้ ระบุชัดเจน อย่าเดา
 
 ## ตัวอย่างการเรียกใช้
