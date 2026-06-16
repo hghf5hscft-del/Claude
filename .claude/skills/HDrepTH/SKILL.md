@@ -408,34 +408,10 @@ find /root/.claude/uploads -type f \( -name "*.jpg" -o -name "*.jpeg" -o -name "
 
 ---
 
-### รูปแบบไฟล์ .txt ที่ต้องเขียน
+### รูปแบบ tag สำหรับเนื้อหา
 
-บันทึกรายงานทั้งหมดลงในไฟล์ `/tmp/hd_report.txt` โดยใช้ tag ต่อไปนี้ **หนึ่ง tag ต่อหนึ่งบรรทัด**:
+ใช้ tag ต่อไปนี้ **หนึ่ง tag ต่อหนึ่งบรรทัด**:
 
-```
-[COVER_NAME] ชื่อผู้รับการวิเคราะห์
-[COVER_DATE] วันเกิด (ถ้ามี)
-[COVER_SUB] โครงสร้างหลัก • Variables • Shadow Chart • Quantum Data
-
-[H1] บทที่ 1: Type และกลยุทธ์ชีวิต
-[INTRO] ย่อหน้าแนะนำสำหรับผู้ใหม่...
-[H2] Type: [ชื่อ Type]
-[BODY] อธิบายเนื้อหา...
-[BULLET] รายการ bullet
-[SUBBULLET] รายการย่อย
-
-[TABLE_HEADER] คอลัมน์ 1 | คอลัมน์ 2 | คอลัมน์ 3
-[TABLE_ROW] ค่า 1 | ค่า 2 | ค่า 3
-[TABLE_ROW] ค่า 4 | ค่า 5 | ค่า 6
-
-[IMAGE] /root/.claude/uploads/[session-id]/[filename]
-[IMAGE_CAPTION] คำอธิบายรูป เช่น Body Graph — [ชื่อผู้รับการวิเคราะห์]
-
-[PAGEBREAK]
-[H1] บทที่ 2: ...
-```
-
-**กฎของ tag:**
 - `[H1]` = หัวข้อบท (ขึ้นหน้าใหม่ก่อนทุกบท — ใช้ `[PAGEBREAK]` ก่อน `[H1]`)
 - `[H2]` = หัวข้อรอง
 - `[H3]` = หัวข้อย่อย
@@ -450,7 +426,34 @@ find /root/.claude/uploads -type f \( -name "*.jpg" -o -name "*.jpeg" -o -name "
 - `[PAGEBREAK]` = ขึ้นหน้าใหม่
 - บรรทัดว่าง = เว้นบรรทัด
 
-**ตัวอย่างที่ถูกต้อง:**
+---
+
+### วิธีเขียนไฟล์รายงาน — แบ่งเป็น 4 ส่วน (สำคัญมาก)
+
+**ห้ามเขียนรายงาน 13 บทในครั้งเดียว** เพราะจะเกิน output token limit
+
+ให้ใช้ Write tool เขียนแยกเป็น **4 ไฟล์** แล้วรวมด้วย Bash:
+
+| ส่วน | เนื้อหา | ไฟล์ |
+|---|---|---|
+| Part 1 | Cover + ตารางพื้นฐาน + บทที่ 1, 2, 3 | `/tmp/hd_p1.txt` |
+| Part 2 | บทที่ 4, 5, 6, 7 | `/tmp/hd_p2.txt` |
+| Part 3 | บทที่ 8, 9, 10 | `/tmp/hd_p3.txt` |
+| Part 4 | บทที่ 11, 12, 13 + บทสรุป | `/tmp/hd_p4.txt` |
+
+**ขั้นตอน:**
+
+1. เขียน Part 1 → Write tool → `/tmp/hd_p1.txt` → แจ้งว่า "✍️ เขียนส่วน 1/4 เสร็จแล้ว"
+2. เขียน Part 2 → Write tool → `/tmp/hd_p2.txt` → แจ้งว่า "✍️ เขียนส่วน 2/4 เสร็จแล้ว"
+3. เขียน Part 3 → Write tool → `/tmp/hd_p3.txt` → แจ้งว่า "✍️ เขียนส่วน 3/4 เสร็จแล้ว"
+4. เขียน Part 4 → Write tool → `/tmp/hd_p4.txt` → แจ้งว่า "✍️ เขียนส่วน 4/4 เสร็จแล้ว"
+5. รวมไฟล์ด้วย Bash tool:
+```bash
+cat /tmp/hd_p1.txt /tmp/hd_p2.txt /tmp/hd_p3.txt /tmp/hd_p4.txt > /tmp/hd_report.txt
+echo "รวมไฟล์เสร็จ: $(wc -l < /tmp/hd_report.txt) บรรทัด"
+```
+
+**ตัวอย่างเนื้อหาใน Part 1:**
 ```
 [COVER_NAME] JJ Z
 [COVER_DATE] 22 กุมภาพันธ์ 1991
@@ -463,19 +466,34 @@ find /root/.claude/uploads -type f \( -name "*.jpg" -o -name "*.jpeg" -o -name "
 [TABLE_ROW] Authority | Sacral
 
 [PAGEBREAK]
-[H1] บทที่ 5: Centers — ศูนย์พลัง 9 แห่ง
-[INTRO] Centers คือ...
-[IMAGE] /root/.claude/uploads/934ea302-c137/abc123-bodygraph.jpg
-[IMAGE_CAPTION] Body Graph — JJ Z (22 กุมภาพันธ์ 1991)
-[H2] Centers ที่ Defined...
+[H1] บทที่ 1: Type และกลยุทธ์ชีวิต
+[INTRO] Type คือรูปแบบพลังงานหลักของคุณ...
+[H2] Type: Pure Manifesting Generator
+[BODY] ...
+[BULLET] ...
 
 [PAGEBREAK]
-[H1] บทที่ 1: Type และกลยุทธ์ชีวิต
-[INTRO] Type คือรูปแบบพลังงานหลักของคุณ เป็นหัวใจของ Human Design ทั้งระบบ มี 5 ประเภท แต่ละประเภทมีวิธีใช้พลังงานและวิธีตัดสินใจที่ต่างกัน
-[H2] Type: Pure Manifesting Generator
-[BODY] มีพลัง Sacral เต็มที่ และมี Motor ต่อตรงถึง Throat...
-[BULLET] กลยุทธ์: รอสิ่งกระตุ้นก่อน แล้วตอบสนองด้วยเสียงท้อง
-[SUBBULLET] ตัวอย่าง: เมื่อได้รับคำถามว่า "อยากทำโปรเจกต์นี้ไหม?" ให้สังเกตเสียงในท้องก่อนตอบ
+[H1] บทที่ 2: Inner Authority
+...
+
+[PAGEBREAK]
+[H1] บทที่ 3: Profile
+...
+```
+
+**ตัวอย่างเนื้อหาใน Part 2** (บทที่ 5 ใส่รูปถ้ามี):
+```
+[PAGEBREAK]
+[H1] บทที่ 4: Definition
+...
+
+[PAGEBREAK]
+[H1] บทที่ 5: Centers
+[INTRO] Centers คือ...
+[IMAGE] /root/.claude/uploads/[session-id]/[filename]
+[IMAGE_CAPTION] Body Graph — JJ Z
+[H2] Centers ที่ Defined
+...
 ```
 
 ---
